@@ -10,3 +10,5 @@ wp-content/uploads/
 wp-content/wp-cache-config.php
 
 .htaccess
+.DS_Store
+wp-content/.DS_Store
