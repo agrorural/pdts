@@ -250,8 +250,8 @@
 				*/
 				if (data.map.admin_view !== undefined)
 				{
-					if (typeof(window[data.map.admin_view] ) == 'function')
-						item = window[data.map.admin_view]( data.params.args, data.el );
+					if (typeof(window['kc_admin_view_'+data.map.admin_view] ) == 'function')
+						item = window['kc_admin_view_'+data.map.admin_view]( data.params.args, data.el );
 					else if (typeof kc.params.admin_view[data.map.admin_view] == 'function')
 						item = kc.params.admin_view[data.map.admin_view]( data.params.args, data.el );
 					else console.log('KC Error: the admin_view function "'+data.map.admin_view+'" is undefined');

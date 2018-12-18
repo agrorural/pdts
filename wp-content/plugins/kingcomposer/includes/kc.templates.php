@@ -45,9 +45,10 @@ $kc = KingComposer::globe();
 				<i class="sl-rocket"></i>
 				<span class="mt-mes"><?php _e('Optimized and speed up your website', 'kingcomposer'); ?></span>
 			</button>
-			<span class="alignright inss">
-				<?php _e('Press Ctrl + S to save', 'kingcomposer'); ?>
-			</span>
+			<button class="button button-large alignright quick-save mtips">
+				<i class="sl-check"></i> <?php _e('Save now', 'kingcomposer'); ?>
+				<span class="mt-mes"><?php _e('Press Ctrl+S to quick save', 'kingcomposer'); ?></span>
+			</button>
 		</div>
 		
 		<div id="kc-rows">
@@ -520,9 +521,6 @@ $kc = KingComposer::globe();
 				<a class="edit-section" href="<?php echo admin_url('/post.php?action=edit&kc_action=enable_builder&post='); ?>{{item.id}}" target="_blank">
 					<i title="<?php _e('Edit section', 'kingcomposer'); ?>" class="sl-pencil edit-section"></i>
 				</a>
-				<a class="share-section" href="#share" data-action="share">
-					<i title="<?php _e('Share this section to KC Hub', 'kingcomposer'); ?>" class="sl-share share-section" data-action="share"></i>
-				</a>
 				<a class="delete-section" href="#delete" data-action="delete">
 					<i title="<?php _e('Delete section', 'kingcomposer'); ?>" class="sl-trash delete-section" data-action="delete"></i>
 				</a>
@@ -625,10 +623,10 @@ $kc = KingComposer::globe();
 				if( kc.sections.terms.length > 0 ){
 					for( var i=0; i<kc.sections.terms.length; i++ ){
 						#><option <# 
-							if(kc.sections.terms[i]['id']+kc.sections.terms[i]['taxonomy'] == kc.sections.term){
+							if(kc.sections.terms[i]['id']+'|'+kc.sections.terms[i]['taxonomy'] == kc.sections.term){
 								#>selected <#
 							}
-						#>value="{{kc.sections.terms[i]['id']+kc.sections.terms[i]['taxonomy']}}">{{kc.sections.terms[i]['name']}}</option><#
+						#>value="{{kc.sections.terms[i]['id']}}|{{kc.sections.terms[i]['taxonomy']}}">{{kc.sections.terms[i]['name']}}</option><#
 					}
 				}
 			#>
@@ -782,13 +780,11 @@ var maps = jQuery.extend({}, kc.maps, true), /* Clone maps */
 				<i class="fa-stack-overflow" aria-hidden="true"></i> <?php _e('Clipboard', 'kingcomposer'); ?>
 			</li>
 			<# } #>
-			<?php if (defined('KC_EXTENSION_BETA')){ ?>
 			<li class="mcl-extensions">
 				<a href="admin.php?page=kc-extensions" target=_blank>
 					<i class="fa-shopping-bag" aria-hidden="true"></i> <?php _e('Extensions', 'kingcomposer'); ?>
 				</a>
 			</li>
-			<?php } ?>
 		</ul>
 		<ul class="kc-components-list-main kc-components-list">
 			<#
@@ -949,7 +945,7 @@ if (data._collapse !== undefined && data._collapse == '1')
 			<li class="right move mtips">
 				<i class="sl-cursor-move"></i>
 				<span class="order-row">
-					<input type="number" placeholder="order" /> <button><i class="fa-exchange"></i></button>
+					<input type="number" placeholder="order" /> <button><i class="fa-exchange-alt"></i></button>
 				</span>
 				<span class="mt-mes"><?php _e('Drag and drop to arrange this section', 'kingcomposer'); ?></span>
 			</li>
@@ -963,7 +959,7 @@ if (data._collapse !== undefined && data._collapse == '1')
 			<li class="right move mtips">
 				<i class="sl-cursor-move"></i>
 				<span class="order-row">
-					<input type="number" placeholder="order" /> <button><i class="fa-exchange"></i></button>
+					<input type="number" placeholder="order" /> <button><i class="fa-exchange-alt"></i></button>
 				</span>
 				<span class="mt-mes"><?php _e('Drag and drop to arrange this section', 'kingcomposer'); ?></span>
 			</li>
@@ -1085,7 +1081,7 @@ if (data._collapse !== undefined && data._collapse == '1')
 							<i class="sl-plus"></i>
 						</li>
 						<li class="delete" title="<?php _e('Delete column', 'kingcomposer'); ?>">
-							<i class="fa fa-trash-o"></i>
+							<i class="fa-trash"></i>
 						</li>
 					</ul>
 				</div>
@@ -1127,7 +1123,7 @@ if (data._collapse !== undefined && data._collapse == '1')
 							<i class="sl-plus"></i>
 						</li>
 						<li class="delete" title="<?php _e('Delete column', 'kingcomposer'); ?>">
-							<i class="fa fa-trash-o"></i>
+							<i class="fa-trash"></i>
 						</li>
 					</ul>
 				</div>
@@ -1185,7 +1181,7 @@ if (data._collapse !== undefined && data._collapse == '1')
 							<i class="fa fa-cut"></i> 
 						</li>
 						<li class="delete" title="<?php _e('Delete', 'kingcomposer'); ?>">
-							<i class="fa fa-trash-o"></i>
+							<i class="fa-trash"></i>
 						</li>
 					</ul>
 				</div>
@@ -1271,7 +1267,7 @@ if (data._collapse !== undefined && data._collapse == '1')
 					<span class="mt-mes"><?php _e('Right click for more options', 'kingcomposer'); ?></span>
 				</li>
 				<li class="delete" title="<?php _e('Delete this element', 'kingcomposer'); ?>">
-					<i class="fa fa-trash-o"></i>
+					<i class="fa-trash"></i>
 				</li>
 			</ul>
 		</div>

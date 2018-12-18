@@ -314,7 +314,7 @@ $css_class[] = 'kc-image-align-' . $image_align;
 									<?php endif;?>
 									<?php if ( $show_date == 'yes' ): ?>
 									<span class="entry-date"><a
-											href="<?php echo esc_url( get_permalink( $post->ID ) ); ?>"><?php echo get_the_date( 'F m, Y', $post->ID ); ?></a></span>
+											href="<?php echo esc_url( get_permalink( $post->ID ) ); ?>"><?php echo get_the_date( 'F d, Y', $post->ID ); ?></a></span>
 									<?php endif;?>
 									<?php if ( $show_category == 'yes' ): ?>
 										<?php if ( get_the_category( $post->ID ) ): ?>

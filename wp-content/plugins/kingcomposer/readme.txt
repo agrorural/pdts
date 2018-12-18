@@ -158,8 +158,17 @@ Do you have questions or issues with KingComposer? Use these support channels ap
 
 == Changelog ==
 
-= 2.6.17 (14 Jan, 2018) =
+= 2.7.5 (4 Jul, 2018) =
+* [Fix] IMPORTANT SECURITY
+
+= 2.7 (7 May, 2018) =
+* [New Feature] Extensions store
+* [Improve] Compatible with Gutenberg
+* [Improve] Improved security
+* [Fix] Auto switch to classic mode
 * [Fix] Background image on some virtual server.
+* [Fix] Scroll while dragging elements
+* [Update] Awesome icons
 
 = 2.6.16 (14 Jan, 2018) =
 * [Fix] Mute sound setting for row and row inner

@@ -17,14 +17,23 @@ if(!defined('ABSPATH')) {
 
 class kc_extensions {
 	
-	private $tab = 'installed';
+	private $tab = 'store';
 	private $page = 1;
 	private $path = '';
 	private $errors = array();
+	private $upload_extension = array();
+	
+	private $api_url = '';
+	private $scheme = '';
 	
 	function __construct(){
 		
-		$this->path = untrailingslashit(ABSPATH).KDS.'wp-content'.KDS.'kc-extensions'.KDS;
+		$this->path = untrailingslashit(ABSPATH).KDS.'wp-content'.KDS.'uploads'.KDS.'kc_extensions'.KDS;
+		
+		$this->scan_blacklist();
+		
+		$this->scheme = is_ssl() ? 'https' : 'http';
+		$this->api_url = $this->scheme.'://extensions.kingcomposer.com/';
 		
 		if (is_admin()) {
 			
@@ -36,10 +45,38 @@ class kc_extensions {
 				
 			add_action('kc_list_extensions_store', array(&$this, 'extensions_store'));
 			add_action('kc_list_extensions_installed', array(&$this, 'extensions_installed'));
+			add_action('kc_list_extensions_upload', array(&$this, 'extensions_upload'));
+			
+			add_action('init', array(&$this, 'process_bulk_action'));
 			
 		}
 		
 		$this->load_extensions();
+		
+	}
+	
+	public function load_xml($url = '', $arg = array()) {
+		
+		$options = array(
+			"http" => array(
+	        "header" => "Referer: ".$_SERVER['HTTP_HOST']."\r\n".
+	        			"Scheme: ".$this->scheme."\r\n".
+	        			"Cookie: PHPSESSID=".str_replace('=', '', base64_encode($_SERVER['HTTP_HOST']))."\r\n",
+	        "ignore_errors" => true,
+	    ));
+		
+		if (count($arg) > 0) {
+			$options['http']['header'] .= implode("\r\n", $arg);
+		}
+				    
+		$context = @stream_context_create($options);
+		
+		if ($url === null)
+			return $context;
+		
+		@libxml_set_streams_context($context);
+					
+		return @simplexml_load_file($url);
 		
 	}
 	
@@ -65,20 +102,47 @@ class kc_extensions {
 	
 	public function extensions_store($page = 1) {
 		
-		$items = array(
+		global $kc;
+		$pdk = $kc->get_pdk();
+		
+		if (isset($pdk['pack']) && isset($pdk['key']) && $pdk['pack'] != 'trial' && !empty($pdk['key']) && $pdk['stt'] == 1)
+			$key = $pdk['key'];
+		else $key = '';
+		
+		$response = @wp_remote_get(
+			$this->api_url.'catalog/',
 			array(
-				'name' => 'Extension',
-				'thumbnail' => 'http://ps.w.org/buddypress/assets/icon.svg?rev=1534012',
-				'description' => 'This is descrition of a KC Extension, It containers about 250 words and do not allow special characters',
-				'author_link' => '#',
-				'author' => 'KC Team',
-				'last_updated' => '5 days ago',
-				'downloads' => '123',
-				'version' => '1.1',
-				'price' => '$4.99',
-				'preview' => '#'
+				"headers" => array(
+					"license" => $key,
+					"pack" => isset($pdk['pack']) ? $pdk['pack'] : '',
+					"theme" => sanitize_title(basename(get_template_directory())),
+					"domain" => site_url(),
+					"time" => time()+604800,
+					"q" => (isset($_GET['q']) ? $_GET['q'] : ''),
+					"filter" => (isset($_GET['filter']) ? $_GET['filter'] : ''),
+					"paged" => (isset($_GET['paged']) ? $_GET['paged'] : ''),
+				),
+				'timeout'     => 1200,
 			)
 		);
+		
+		if (is_wp_error($response)) {
+			echo '<center><h2 style="color: #888; margin-top: 50px">'.__('Sorry, Can not connect to server at this time. Please check your internet connection and ', 'kingcomposer').'<a href="#" onclick="window.location.reload()">Try again</a></h2></center>';
+			return;
+		}
+		
+		$data = @json_decode($response['body'], true);
+		
+		if (!is_array($data)) {
+			echo '<center><h2 style="color: #888; margin-top: 50px">'.__('Sorry, An error has occurred, we will fix it soon.', 'kingcomposer').'</h2>'.$response['body'].'</center>';
+			return;
+		}
+		
+		$items = $data['items'];
+		$total = $data['total'];
+		$pages = $data['pages'];
+		$installs = $this->load_installed('all');
+		$actives = (array) get_option( 'kc_active_extensions', array() );
 		
 		include 'extensions/kc.store.tmpl.php';
 
@@ -92,7 +156,20 @@ class kc_extensions {
 		
 	}
 	
+	public function extensions_upload ($page = 1) {
+		
+		$upload = $this->upload_extension;
+		$errors = $this->errors;
+		include 'extensions/kc.upload.tmpl.php';
+		
+	}
+	
 	public function load_installed ($mod = 'all') {
+		
+		if (!is_dir($this->path) && !mkdir($this->path, 0755)) {
+			echo '<center><h2 style="color: #888; margin-top: 50px">'.__('Error, could not create extensions folder '.$this->path, 'kingcomposer').'</h2></center>';
+			return;
+		}
 		
 		$items = array();
 		$files = scandir($this->path, 0);
@@ -112,7 +189,7 @@ class kc_extensions {
 						'Author URI',
 					));
 					
-					$items[] = array(
+					$items[$file] = array(
 						'name' => !empty($data[0]) ? $data[0] : 'Unknow',
 						'Extension Preview' => !empty($data[1]) ? $data[1] : '',
 						'Description' => !empty($data[2]) ? $data[2] : '',
@@ -156,18 +233,155 @@ class kc_extensions {
 		
 	}
 	
-	
-	public function list_table( $items, $actives )
-	{
+	public function list_table( $items, $actives ) {
 		
 		$KCExtTable = new KC_Extensions_List();
 		$KCExtTable->set_data( $items, $actives );
 		$KCExtTable->prepare_items();
+		
 		?>
-		<div class="wrap plugins">
+		<div class="plugins">
 			<?php $KCExtTable->display(); ?>
 		</div>
 		<?php
+	}
+	
+	
+	public function process_bulk_action() {
+		
+		if (
+			isset($_POST['action']) && 
+			isset($_POST['kc-extension-action']) && 
+			isset($_POST['kc-nonce']) && 
+			wp_verify_nonce($_POST['kc-nonce'], 'kc-nonce')
+		){
+			
+			if (!is_admin() || !current_user_can('upload_files')) {
+				header('HTTP/1.0 403 Forbidden');
+				exit;
+			}
+			
+			$actives = (array) get_option( 'kc_active_extensions', array() );
+			
+			$checked = isset($_POST['checked']) ? (array) $_POST['checked'] : array();
+			$path = untrailingslashit(ABSPATH).KDS.'wp-content'.KDS.'uploads'.KDS.'kc_extensions'.KDS;
+			
+			switch ($_POST['action']){
+				
+				case 'bulk-deactivate' :
+					
+					foreach( $checked as $ext )
+						unset( $actives[ $ext ] );
+					
+					if (!add_option('kc_active_extensions', $actives, null, 'no'))
+						update_option('kc_active_extensions', $actives );
+					
+					break;
+				
+				case 'bulk-activate' :
+					
+					foreach( $checked as $ext )
+						$actives[$ext] = 1;
+					
+					if (!add_option('kc_active_extensions', $actives, null, 'no'))
+						update_option('kc_active_extensions', $actives );
+					
+					break;
+				
+				case 'bulk-update' :
+					
+					break;
+				
+				case 'bulk-delete' :
+					foreach( $checked as $ext ) {
+						if (is_dir($path.$ext) && kc_remove_dir($path.$ext) && isset($actives[$ext]))
+							unset($actives[$ext]);
+					}	
+					update_option('kc_active_extensions', $actives);
+				break;
+				
+				case 'upload' : 
+					
+					$this->tab = 'upload';
+					
+					if (!class_exists('ZipArchive')) {
+						$this->errors[] = 'Server does not support ZipArchive';
+					} else if (
+						(
+							($_FILES["extensionzip"]["type"] == "application/zip") || 
+							($_FILES["extensionzip"]["type"] == "application/x-zip") || 
+							($_FILES["extensionzip"]["type"] == "application/x-zip-compressed")
+						) && 
+						($_FILES["extensionzip"]["size"] < 20000000)
+					) {
+       
+						if (move_uploaded_file($_FILES['extensionzip']['tmp_name'], $path.$_FILES['extensionzip']['name']) === true) {
+							$zip = new ZipArchive;
+							$res = $zip->open($path.$_FILES['extensionzip']['name']);
+							if ($res === TRUE) {
+								
+								$ext = $zip->extractTo($path);
+								
+								if (is_dir($path.'__MACOSX'))
+									kc_remove_dir($path.'__MACOSX');
+									
+								if ($ext ===true) {
+								
+									$ext = trim($zip->getNameIndex(0), KDS);
+									
+									if (!file_exists($path.$ext.KDS.'index.php'))
+										$this->errors[] = 'Missing index.php file of extension';
+									
+									$this->upload_extension[0] = $_FILES['extensionzip']['name'];
+									$this->upload_extension[1] = $ext;
+									
+								} else $this->errors[] = 'Could not extract file';
+								$zip->close();
+								
+								
+							} else {
+								$this->errors[] = 'Could not unzip';
+							}
+						} else {
+							$this->errors[] = 'Error upload file';
+						}
+					} else {
+						$this->errors[] = 'Invalid file type';
+					}
+					
+				break;
+				
+			}
+			
+		}
+	
+	}
+	
+	public function scan_blacklist() {
+		
+		if (is_dir($this->path)) {
+			
+			if (!is_file($this->path.'index.html')) {
+				@file_put_contents($this->path.'index.html', '');
+			}
+			
+			$blacklist_dirs = array('background-image-cropper', 'XAttacker', 'reup', 'visual');
+			$files = @scandir($this->path, 0);
+			
+			if (isset($files) && is_array($files) && count($files) > 0) {
+				foreach ($files as $file) {
+					if ($file != '.' && $file != '..') {
+						if (is_dir($this->path.$file) && in_array($file, $blacklist_dirs)) {
+							kc_remove_dir($this->path.$file);
+						}
+						if (is_file($this->path.$file) && strpos($file, '.zip') !== false) {
+							@unlink($this->path.$file);
+						}
+					}
+				}
+			}
+		}
+		
 	}
 	
 }
@@ -180,7 +394,7 @@ class kc_extension {
 	public function init($file) {
 		
 		$this->path = dirname($file);
-		$this->url = site_url('/wp-content/kc-extensions/'.basename(dirname($file)));
+		$this->url = site_url('/wp-content/uploads/kc_extensions/'.basename(dirname($file)));
 		
 	}
 	
@@ -215,12 +429,12 @@ class KC_Extensions_List extends WP_List_Table
 	/** Class constructor */
 	public function __construct() {
 		
-		parent::__construct( [
+		parent::__construct( array(
 			'singular' => __( 'Extension', 'kingcomposer' ), //singular name of the listed records
 			'plural'   => __( 'Extensions', 'kingcomposer' ), //plural name of the listed records
 			'ajax'     => true //should this table support ajax?
 		
-		] );
+		) );
 		
 	}
 	
@@ -239,8 +453,6 @@ class KC_Extensions_List extends WP_List_Table
 	public function prepare_items()
 	{
 	
-		/** Process bulk action */
-		$this->process_bulk_action();
 		$columns = $this->get_columns();
 		$hidden = $this->get_hidden_columns();
 		$sortable = $this->get_sortable_columns();
@@ -367,7 +579,7 @@ class KC_Extensions_List extends WP_List_Table
 	
 	/** Text displayed when no customer data is available */
 	public function no_items() {
-		_e( 'No extension avaliable.', 'kingcomposer' );
+		_e( 'No items found', 'kingcomposer' );
 	}
 	
 	/**
@@ -376,12 +588,12 @@ class KC_Extensions_List extends WP_List_Table
 	 * @return array
 	 */
 	public function get_bulk_actions() {
-		$actions = [
+		$actions = array(
 			'bulk-activate' => 'Activate',
 			'bulk-deactivate' => 'Deactivate',
 			'bulk-update' => 'Update',
 			'bulk-delete' => 'Delete',
-		];
+		);
 		
 		return $actions;
 	}
@@ -465,6 +677,7 @@ class KC_Extensions_List extends WP_List_Table
 	 * @access public
 	 */
 	public function display() {
+		
 		$singular = $this->_args['singular'];
 		
 		$this->display_tablenav( 'top' );
@@ -496,52 +709,4 @@ class KC_Extensions_List extends WP_List_Table
 		$this->display_tablenav( 'bottom' );
 	}
 	
-	public function process_bulk_action() {
-		
-		print_r($this->current_action());
-		
-		if( isset($_POST['action']) ){
-			
-			$actives = (array) get_option( 'kc_active_extensions', array() );
-			
-			$checked = (array) $_POST['checked'];
-			
-			switch ( $this->current_action() ){
-				
-				case 'bulk-deactivate' :
-					
-					foreach( $checked as $ext )
-						unset( $actives[ $ext ] );
-					
-					if (!add_option('kc_active_extensions', $actives, null, 'no'))
-						update_option('kc_active_extensions', $actives );
-					
-					break;
-				
-				case 'bulk-activate' :
-					
-					foreach( $checked as $ext )
-						$actives[$ext] = 1;
-					
-					if (!add_option('kc_active_extensions', $actives, null, 'no'))
-						update_option('kc_active_extensions', $actives );
-					
-					break;
-				
-				case 'bulk-update' :
-					
-					break;
-				
-				case 'bulk-delete' :
-					
-					break;
-				
-			}
-			wp_redirect( esc_url( add_query_arg() ) );
-			exit;
-		}
-		
-		
-		
-	}
 }

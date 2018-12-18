@@ -231,3 +231,15 @@ function kc_blog_posts_filter( $atts = array() ) {
 	return $atts;
 
 }
+
+function kc_feature_box_filter( $atts = array() ){
+
+	if( isset( $atts['layout'] ) && $atts['layout'] == '2' ){
+		wp_enqueue_script( 'owl-carousel' );
+		wp_enqueue_style( 'owl-theme' );
+		wp_enqueue_style( 'owl-carousel' );
+	}
+
+	return $atts;
+
+}

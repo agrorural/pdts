@@ -134,6 +134,7 @@ function kc_load_lang() {
 
 
 add_action('admin_enqueue_scripts', 'kc_assets', 1 );
+
 function kc_assets(){
 
 	global $kc;
@@ -238,6 +239,7 @@ function kc_filter_admin_menu_title ($menu_title) {
 
 
 add_filter ('admin_body_class', 'kc_admin_body_classes');
+
 function kc_admin_body_classes ($classes) {
 
 	global $kc;
@@ -258,6 +260,7 @@ function kc_admin_body_classes ($classes) {
 */
 
 add_action ('admin_bar_menu', 'kc_admin_bar', 999);
+
 function kc_admin_bar ($wp_admin_bar) {
 
 	global $kc;
@@ -274,6 +277,7 @@ function kc_admin_bar ($wp_admin_bar) {
 
 
 add_action ('admin_menu', 'kc_settings_menu', 0);
+
 function kc_settings_menu() {
 
 	$capability = apply_filters('access_kingcomposer_capability', 'access_kingcomposer');
@@ -351,18 +355,30 @@ function kc_admin_header(){
 			global $shortcode_tags;
 
 			$arrg = array();
+			$livearrg = array();
 			$maps = $kc->get_maps();
 
 			foreach( $maps as $key => $val ){
 				array_push( $arrg, $key );
+				if(
+					isset($val['live_editor']) 
+					&& !in_array($key, array('kc_raw_code'))
+					&& file_exists($val['live_editor'])
+					&& $val['flag'] == 'core'
+				)
+					array_push( $livearrg, $key );
 			}
 
 			foreach( $shortcode_tags as $key => $val ){
 				if( !in_array( $key, $arrg ) )
-					array_push( $arrg, $key );
+					array_push( $arrg, $key );				
 			}
 
 			echo implode( '|', $arrg );
+
+		?>',
+		live_shortcode_tags = '<?php
+			echo implode( '|', $livearrg );
 
 		?>',
 		<?php
@@ -411,7 +427,7 @@ function kc_utf8replacer($captures) {
 */
 
 
-function kc_after_title ($post) {
+function kc_after_title () {
 
 	if (!is_admin() || !kc_admin_enable())
 		return;
@@ -438,7 +454,7 @@ END;
 	}
 
 ?>
-	<div id="kc-switcher-buttons">
+	<div id="kc-switcher-buttons" style="display: inline-block;">
 
 		<?php do_action('kc-switcher-buttons'); ?>
 
@@ -456,12 +472,12 @@ END;
 */
 
 
-function kc_after_editor ($post) {
-
+function kc_after_editor () {
+	
 	if (!is_admin() || !kc_admin_enable())
 		return;
 
-	global $kc;
+	global $post, $kc;
 
 	echo '<div style="display:none;">';
 
@@ -528,6 +544,7 @@ function kc_tinymce_fix($in) {
     return $in;
 
 }
+
 add_filter ('tiny_mce_before_init', 'kc_tinymce_fix');
 
 
@@ -556,20 +573,22 @@ function kc_admin_footer (){
 
 
 add_action ('save_post', 'kc_process_save', 999, 2);
+
 function kc_process_save ($post_id, $post) {
-
-	if (!isset($_POST['content']) || !isset($_POST['post_ID']) || !current_user_can('publish_pages'))
+	
+	if (!current_user_can('publish_pages'))
 		return;
-
+		
 	global $wpdb, $kc;
-	$id = $_POST['post_ID'];
-	if (isset($_POST['kc_post_meta']) && is_array($_POST['kc_post_meta'])) {
+	
+	$id = isset($_POST['post_ID']) ? $_POST['post_ID'] : $post->ID;
+	
+	if (isset($_POST['kc_post_meta']) && is_array($_POST['kc_post_meta']))
 		$meta = kc_process_save_meta($id, $_POST['kc_post_meta']);
-	}
 	/*
 	*	Create cache when KC active
 	*/
-	if (isset($meta['mode']) && $meta['mode'] == 'kc')
+	if (isset($id) && isset($_POST['content']) && isset($meta) && isset($meta['mode']) && $meta['mode'] == 'kc')
 	{
 
 		require_once KC_PATH.'/includes/kc.front.php';
@@ -619,10 +638,9 @@ function kc_process_save ($post_id, $post) {
 		    array( 'ID' => $id )
 		);
 
-	}
-	else{
-
-		if( $_POST['action'] !== 'inline-save'){
+	} else {
+		
+		if( !isset($_POST['action']) || $_POST['action'] !== 'inline-save'){
 			$wpdb->update(
 
 				$wpdb->prefix.'posts',
@@ -635,7 +653,30 @@ function kc_process_save ($post_id, $post) {
 				array( 'ID' => $id )
 			);
 		}
+		
+		/*if (isset($post->filter) && $post->filter == 'raw') {
+			kc_process_save_meta($id, array('mode' => ''));
+		}*/
+		
 	}
+	/*else if (defined('GUTENBERG_VERSION')){
+
+		if (!isset($_POST['action']) || $_POST['action'] != 'inline-save'){
+			$wpdb->update(
+
+				$wpdb->prefix.'posts',
+
+				array(
+					'ID' => $id,
+					'post_content_filtered' => ''
+				),
+
+				array( 'ID' => $id )
+			);
+			
+			kc_process_save_meta($id, array('mode' => ''));
+		}
+	}*/
 
 }
 
@@ -655,21 +696,27 @@ function kc_process_save_meta($id, $meta = array()) {
 	if (!is_array($meta))
 		$meta = array();
 
-	foreach(
-		array('mode' => '', 'css' => '', 'max_width' => '', 'classes' => '', 'thumbnail' => '', 'collapsed' => '', 'optimized' => '')
-		as $key => $value
+	foreach (
+		array(
+			'mode' => '', 
+			'css' => '', 
+			'max_width' => '', 
+			'classes' => '', 
+			'thumbnail' => '', 
+			'collapsed' => '', 
+			'optimized' => ''
+		) as $key => $val
 	) {
-		if (!isset($meta[$key]))
-			$meta[$key] = '';
+		if (isset($meta[$key]))
+			$param[$key] = $meta[$key];
+		else if (!isset($param[$key]))
+			$param[$key] = '';
 	}
 
-	if (!add_post_meta( $id, 'kc_data', $meta, true)) {
-		foreach ($meta as $key => $value) {
-			$param[$key] = $value;
-		}
+	if (!add_post_meta( $id, 'kc_data', $param, true))
 		update_post_meta( $id, 'kc_data', $param );
-		return $param;
-	} return $meta;
+		
+	return $param;
 
 }
 
@@ -763,7 +810,7 @@ function kc_content_row_actions ($actions, $post) {
 				$actions = array_merge ($actions, array(
 					'kc-pro' => sprintf( '<a href="%1$s">%2$s</a>',
 					    esc_url( admin_url('/?page=kingcomposer&kc_action=live-editor&id='.$post->ID) ),
-					    	__('Live Edit with KC Pro!', 'kingcomposer')
+					    	__('Live edit with KC Pro!', 'kingcomposer')
 						)
 					)
 				);
@@ -925,4 +972,31 @@ function kc_action_the_post( &$post ){
 			$post->post_content =  $post->post_content_filtered;
 
 	}
+}
+
+
+add_filter( 'replace_editor', 'kc_gutenberg_compatible', 11, 2 );
+
+function kc_gutenberg_compatible( $return, $post ) {
+	
+	if ($post->post_type == 'kc-section') {
+		remove_filter('replace_editor', 'gutenberg_init');
+		return false;
+	}
+	
+	if (defined('GUTENBERG_VERSION') && !isset($_GET['classic-editor'])) {
+		do_action('edit_form_after_title');
+		do_action('edit_form_after_editor');
+		kc_action_the_post($post);
+		?>
+		<form id="post" style="display: none;">
+			<input type="hidden" id="title" value="<?php echo $post->post_title; ?>" />
+			<input type="hidden" id="post_ID" value="<?php echo $post->ID; ?>" />
+			<?php wp_editor( $post->post_content, 'content' ); ?>
+		</form>
+		<?php
+		return true;
+	}
+		
+	return false;
 }

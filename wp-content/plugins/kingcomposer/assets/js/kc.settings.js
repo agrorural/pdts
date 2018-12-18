@@ -327,6 +327,108 @@
 		    return false;
 	    });
 	    
+	    $('a[href="#upload-extension"]').on('click', function(e) {
+		    $(this).parent().addClass('show-upload-view');
+		    e.preventDefault();
+	    });
+	    
+	    $('a.install-now').on('click', function(e) {
+		    
+		    var _this = $(this),
+		    	id = this.getAttribute('href').trim().replace('#', ''),
+		    	verify = this.getAttribute('data-verify');
+		    
+		    if (verify != '1') {
+		   		$('#kc-extension-notice').css({opacity: 0, display: 'inline-block'}).animate({opacity: 1}, 250);
+		   		$('#kc-extension-notice-body').css({opacity: 0, top: '55%'}).animate({opacity: 1, top: '50%'}, 200);
+		    } else {
+			    if (_this.data('installed') == true) {
+				    
+			  		$(this).addClass('disabled').html('<i class="dashicons dashicons-update kc-spin"></i> Processing..');
+				    var task = _this.hasClass('button-primary') ? 'active' : 'deactive';
+				    
+					$.post({
+				    	url: ajaxurl, 
+				    	data: {
+					    	'action': 'kc_installed_extensions',
+							'name': id,
+							'task': task,
+						    'security': $('#kc-nonce').val()
+					    },
+					    method: 'POST',
+					    dataType: 'json',
+						success: function (result) {
+							
+							if (result == '-1' || result == '0')
+							{
+								alert('Error: Invalid sercurity sessition or do wrong way.');
+							}
+							else if (result.stt == 1)
+							{
+								if (task == 'active') {
+									_this.removeClass('disabled').
+										  addClass('button-link-delete').
+										  removeClass('button-primary').
+										  html('Deactive');
+								} else {
+									_this.removeClass('disabled').
+										  removeClass('button-link-delete').
+										  addClass('button-primary').
+										  html('Active Now');
+								}
+							}
+						}
+					});
+					
+					e.preventDefault();
+					return;
+					
+			    };
+			    
+			    $(this).addClass('disabled').html('<i class="dashicons dashicons-update kc-spin"></i> Installing..');
+			    
+			    $.post({
+			    	url: ajaxurl, 
+			    	data: {
+				    	'action': 'kc_store_extensions',
+						'id': id,
+						'task': 'download',
+					    'security': $('#kc-nonce').val()
+				    },
+				    method: 'POST',
+				    dataType: 'json',
+					success: function (result) {
+						
+						if (result.status) {
+							if (result.status == 'error') {
+								alert(result.errors.join("\n"));
+								_this.html('Install Now').removeClass('disabled');
+							} else if (result.status == 'success') {
+								_this.html('Active Now').
+									  removeClass('disabled').
+									  addClass('button-primary').
+									  attr({'data-installed': 'true'});
+							}
+						}
+							
+					}
+				});
+		    }
+		    
+		    e.preventDefault();
+	    });
+	    
+	    $('.bulkactions button.action').on('click', function(e) {
+		    var action = $(this).parent().find('select').val();
+		    alert(action);
+		    e.preventDefault();
+	    });
+	    
+	    $('#kc-extension-notice a[href="#close"]').on('click', function(e){
+		    $('#kc-extension-notice-body').animate({opacity: 0, top: '55%'}, 200);
+		    $('#kc-extension-notice').animate({opacity: 0}, 250, function(){this.style.display = 'none';});
+	    });
+	    
 	});
 	
 })(jQuery);

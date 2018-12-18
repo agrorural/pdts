@@ -373,7 +373,7 @@ function kc_process_tab_title( $matches ){
 					$tab_atts['icon'] = 'fa-leaf';
 				$title = '<i class="'.$tab_atts['icon'].'"></i> '.$title;
 			}
-			echo '<li><a href="#'.$tab_atts['tab_id'].'" data-prevent="scroll">'.$title.'</a></li>';
+			echo '<li><a href="#'.(isset($tab_atts['tab_id']) ? $tab_atts['tab_id'] : '').'" data-prevent="scroll">'.$title.'</a></li>';
 		}
 
 	}

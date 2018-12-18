@@ -45,10 +45,12 @@ class kc_ajax{
 			'update_option'		=> false,
 			'update_mapper'		=> false,
 			'enable_optimized'	=> false,
+			'switch_off'		=> false,
 			'share_section'		=> false,
 			'load_element_via_ajax'	=> false,
 
 			'installed_extensions'	=> false,
+			'store_extensions'	=> false,
 		);
 
 		foreach ( $ajax_events as $ajax_event => $nopriv ) {
@@ -934,7 +936,9 @@ class kc_ajax{
 
 		require_once KC_PATH.'/includes/kc.templates.php';
 		do_action('kc_tmpl_storage');
-
+		
+		echo '<!----END_KC_TMPL---->';
+		
 		exit;
 
 	}
@@ -983,7 +987,7 @@ class kc_ajax{
 		{
 			$data = $kc->kcp_remote( $license, 'revoke_domain' );
 		}
-
+		
 		wp_send_json( $data );
 
 		exit;
@@ -997,7 +1001,7 @@ class kc_ajax{
 		$skin_args = array(
 			'type'   => 'web',
 			'title'  => 'Install KC Pro!',
-			'url'    => 'https://kingcomposer.com/downloads/kc_pro.zip',
+			'url'    => (is_ssl() ? 'https' : 'http').'://kingcomposer.com/downloads/kc_pro.zip?kc_store_action=download',
 			'nonce'  => 'install-plugin_kc_pro',
 			'plugin' => '',
 			'api'    => null,
@@ -1013,7 +1017,7 @@ class kc_ajax{
 
 		echo '<div class="kc-pro-download-result">';
 
-		if( $upgrader->install( 'https://kingcomposer.com/downloads/kc_pro.zip' ) === true ){
+		if( $upgrader->install($skin_args['url']) === true ){
 
 			$result = activate_plugin('kc_pro/kc_pro.php');
 
@@ -1305,7 +1309,8 @@ class kc_ajax{
 
 				$meta = get_post_meta( get_the_ID(), 'kc_data', true );
 				$preview = get_the_post_thumbnail_url();
-				if (!empty($meta) && isset($meta['thumbnail']))
+				
+				if (!empty($meta) && isset($meta['thumbnail']) && !empty($meta['thumbnail']))
 					$preview = $meta['thumbnail'];
 
 				$data['data']['items'][] = array(
@@ -1616,6 +1621,32 @@ class kc_ajax{
 
 	}
 
+	public function switch_off() {
+		
+		global $wpdb;
+		
+		$id = $_POST['id'];
+		$mode = $_POST['mode'];
+		/*
+		$wpdb->update(
+
+			$wpdb->prefix.'posts',
+
+			array(
+				'ID' => $id,
+				'post_content_filtered' => ''
+			),
+
+			array( 'ID' => $id )
+		);
+		*/
+		kc_process_save_meta($id, array('mode' => $mode));
+		
+		echo 'success';
+		exit;
+		
+	}
+
 	public function share_section(){
 
 		check_ajax_referer( 'kc-nonce', 'security' );
@@ -1643,7 +1674,7 @@ class kc_ajax{
 
 		$args['content'] = kc_raw_content($args['id']);
 
-		$response = wp_remote_post('http://hub.kingcomposer.com/submit/', array(
+		$response = wp_remote_post((is_ssl() ? 'https' : 'http').'://hub.kingcomposer.com/submit/', array(
 			'method' => 'POST',
 			'timeout' => 45,
 			'redirection' => 5,
@@ -1677,9 +1708,10 @@ class kc_ajax{
 	public function installed_extensions () {
 
 		check_ajax_referer( 'kc-nonce', 'security' );
+		
 		$task = isset($_POST['task']) ? esc_attr($_POST['task']) : '';
 		$name = isset($_POST['name']) ? esc_attr($_POST['name']) : '';
-		$path = untrailingslashit(ABSPATH).KDS.'wp-content'.KDS.'kc-extensions'.KDS;
+		$path = untrailingslashit(ABSPATH).KDS.'wp-content'.KDS.'uploads'.KDS.'kc_extensions'.KDS;
 		$data = array('msg' => 'Unknow', 'stt' => 0);
 
 		if ( empty($task) || empty($name) || !in_array($task, array('active', 'deactive', 'delete'))) {
@@ -1687,7 +1719,7 @@ class kc_ajax{
 		} else {
 
 			$extensions = (array) get_option( 'kc_active_extensions', array() );
-			$path = untrailingslashit(ABSPATH).KDS.'wp-content'.KDS.'kc-extensions'.KDS.$name.KDS;
+			$path = $path.$name.KDS;
 
 			switch ($task) {
 
@@ -1741,7 +1773,90 @@ class kc_ajax{
 		exit;
 
 	}
-
+	
+	public function store_extensions() {
+		
+		global $kc;
+		
+		check_ajax_referer( 'kc-nonce', 'security' );
+		
+		$pdk = $kc->get_pdk();
+		$msg = array();
+		$id = $_POST['id'];
+		
+		/*
+		*	Start downloading extentions
+		*/
+		
+		
+		$ex_path = WP_CONTENT_DIR.KDS.'uploads'.KDS.'kc_extensions'.KDS;
+		$file = time();
+		$file = $ex_path.KDS.$file.'.zip';
+		
+		if (!is_dir($ex_path) && !mkdir($ex_path, 07555)) {
+			$msg['status'] = 'error';
+			$msg['errors'] = array('Error: Could not create extensions folder');
+			echo json_encode($msg);
+			exit;
+		}
+		
+		$options = @stream_context_create(array("http" => array(
+				        "header" => "Referer: ".$_SERVER['HTTP_HOST']."\r\n".
+				        			"Domain: ".$pdk['domain']."\r\n".
+				        			"Date: ".$pdk['date']."\r\n".
+				        			"Key: ".$pdk['key']."\r\n".
+				        			"Cookie: PHPSESSID=".str_replace('=', '', base64_encode($_SERVER['HTTP_HOST']))."\r\n".
+				        			"Download: yes\r\n".
+				        			"Id: ".$id."\r\n",
+				        "ignore_errors" => true,
+				    )));
+		
+		$fh = @fopen((is_ssl() ? 'https' : 'http').'://extensions.kingcomposer.com/download/', false, true, $options);
+		
+		$data = file_put_contents($file, $fh);
+		@fclose($fh);
+		
+		/*
+		*	End downloading extentions
+		*/
+		
+		if ($data === 0) {		
+			$msg['status'] = 'error';
+			$msg['errors'] = array('Error: Could not download file, make sure that the fopen() funtion on your server is enabled');
+		} else if ($data < 250) {
+			$msg['status'] = 'error';
+			$erro = @file_get_contents($file);
+			$msg['errors'] = array('Error: '.$erro);
+		} else if (!class_exists('ZipArchive')) {
+			$msg['status'] = 'error';
+			$msg['errors'] = array('Error: Your server does not support ZipArchive to extract extensions');
+		} else {
+			$zip = new ZipArchive;
+			$res = $zip->open($file);
+			
+			if ($res === TRUE) {
+				
+				$zip->extractTo($ex_path);
+				$zip->close();
+				
+				if (is_dir($ex_path.'__MACOSX'))
+					kc_remove_dir($ex_path.'__MACOSX');
+				
+				$msg['status'] = 'success';
+				
+			} else {
+				$msg['status'] = 'error';
+				$msg['errors'] = array($this->main->lang('Error: Could not open file').$file);
+			}
+		}
+		
+		@unlink($file);
+		
+		echo json_encode($msg);
+		exit;
+		
+	}
+	
 	public function msg( $s = '', $t = 1 ){
 		if( $t == 1 )
 			return '<h3 class="mesg success"><i class="et-happy"></i><br />'.$s.'</h3>';

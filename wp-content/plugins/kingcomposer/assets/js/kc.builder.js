@@ -63,7 +63,7 @@
 				this.__ = kc_js_languages;
 			
 			this.ui.init();
-
+			
 			$('#kc-switch-builder').on( 'click', this.switch );
 
 			$('#post').on( 'submit', this.submit );
@@ -105,7 +105,8 @@
 			.on('click', kc.ui.exit_right_click)
 			.get(0).oncontextmenu = function(e) {
 				return false;
-			}
+			};
+			
 			/*
 			*	// Start add actions
 			*/
@@ -1370,6 +1371,8 @@
 					
 				kc.body = document.querySelectorAll('body')[0];
 				kc.html = document.querySelectorAll('html')[0];
+				
+				kc.ui.rows = document.getElementById('kc-rows');
 					
 				$(document).on('mousedown', function(e) {kc.ui.elm_start = e.target;});
 
@@ -1487,6 +1490,20 @@
 				}
 				
 				return true;
+				
+			},
+			
+			scroll_helper : function(dir) {
+				
+				if (dir !== undefined)
+					kc.ui.scrolling = dir;
+				
+				if (kc.ui.scrolling != 'up' && kc.ui.scrolling != 'down')
+					return;
+				
+				$("html, body").scrollTop($(window).scrollTop() + (kc.ui.scrolling == 'up' ? -1 : 1));
+				
+				setTimeout(kc.ui.scroll_helper, 1);
 				
 			},
 			
@@ -1641,6 +1658,7 @@
 								kc.ui.sortable_events.dragstart(e);
 							}
 						}
+						
 					}
 
 				},
@@ -1657,7 +1675,8 @@
 					}
 
 					kc.ui.over_delay = true;
-
+					kc.ui.scrolling = '';
+					
 					var atts = $(this).data('atts'), 
 						handle, 
 						okGo = false;
@@ -1731,8 +1750,22 @@
 				},
 
 				dragover : function( e ){
-
+					
 					var u = kc.ui;
+					
+					if (e.y < 70) {
+						if (u.scrolling != 'up' && u.scrolling != 'down')
+							u.scroll_helper('up');
+						e.preventDefault();
+						return false;
+					} else if (e.screenY > window.screen.availHeight) {
+						if (u.scrolling != 'up' && u.scrolling != 'down')
+							u.scroll_helper('down');
+						e.preventDefault();
+						return false;
+					};
+					
+					u.scrolling = '';
 
 					if( u.elm_drag === null ){
 
@@ -1839,7 +1872,7 @@
 				},
 
 				drag : function( e ){
-
+					
 					var atts = $(this).data('atts'),
 						h = atts.helperClass,
 						p = atts.placeholder,
@@ -1870,7 +1903,9 @@
 
 					if( typeof atts.leave == 'function' )
 						atts.leave( e, this );
-
+					
+					kc.ui.scrolling = '';
+					
 					e.preventDefault();
 					return false;
 				},
@@ -1887,7 +1922,8 @@
 					kc.ui.elm_start = null;
 
 					kc.ui.key_down = false;
-
+					kc.ui.scrolling = '';
+					
 					$('body').removeClass('kc-ui-dragging');
 
 
@@ -1905,7 +1941,9 @@
 
 					if( typeof atts.drop == 'function' )
 						atts.drop( e, this );
-
+					
+					kc.ui.scrolling = '';
+					
 					e.preventDefault();
 					return false;
 
@@ -3168,14 +3206,14 @@
 				}
 			},
 			
-			verify_tmpl : function(){
+			verify_tmpl : function( refresh = false ){
 				
 				
 				var cfg = $().extend( kc.cfg, kc.backbone.stack.get('KC_Configs') );
 				
-				if(cfg.version != kc_version || localStorage['KC_TMPL_CACHE'] === undefined || localStorage['KC_TMPL_CACHE'] === ''){
+				if( cfg.version != kc_version || refresh || localStorage['KC_TMPL_CACHE'] === undefined || localStorage['KC_TMPL_CACHE'] === ''){
 					
-					kc.msg( 'KingComposer is initializing', 'loading' );
+					if( !refresh) kc.msg( 'KingComposer is initializing', 'loading' );
 					
 					$.post(
 		
@@ -3196,22 +3234,26 @@
 								
 								cfg.version = kc_version;
 								
+								localStorage.clear();
+								
 								kc.backbone.stack.set( 'KC_Configs', cfg );
 								kc.backbone.stack.set( 'KC_TMPL_CACHE', result );
 								
-								kc.init(); 
+								kc.init();
 								
 							}
 							
 						}
 					);
 				
-				}else return true;
+				}else if( !kc.ui.check_tmpl() ){
+					return false;
+				} else return true;
 				
 			},
 			
 			get_tmpl_cache : function( tmpl_id ){
-			
+				
 				if( localStorage['KC_TMPL_CACHE'] !== undefined && localStorage['KC_TMPL_CACHE'].indexOf('id="'+tmpl_id+'"') > -1 ){
 					
 					var s1 = localStorage['KC_TMPL_CACHE'].indexOf('>', localStorage['KC_TMPL_CACHE'].indexOf('id="'+tmpl_id+'"') )+1,
@@ -3223,12 +3265,26 @@
                             escape:      /\{\{([^\}]+?)\}\}(?!\})/g,
                             variable:    'data'
                         };
-	
+						
 	                return _.template( string, null, options );
 					
 				}
 				
 				return 'exit';	
+				
+			},
+			
+			check_tmpl : function (call_init){
+				
+				var tmpl = localStorage.getItem('KC_TMPL_CACHE');
+				
+				if (tmpl === undefined || tmpl === '' || tmpl === null || tmpl.indexOf('<!----END_KC_TMPL---->') === -1) {
+					kc.msg( 'KingComposer is refreshing', 'loading' );
+					kc.ui.verify_tmpl( true );
+					return false;
+				}
+				
+				return true;
 				
 			},
 			
@@ -6690,7 +6746,7 @@
 
 		instant_submit : function(){
 			
-			$('#kc-page-cfg-mode').val( kc.cfg.mode );
+			$('#kc-page-cfg-mode').val(kc.cfg.mode);
 			
 			/*
 			*	Editing sections
@@ -6705,6 +6761,7 @@
 			*/
 			if( $('#kc-preload').length > 0 || kc.cfg.mode != 'kc' )
 				return;
+				
 			/*
 			*	do not work if missing important field
 			*/
@@ -6809,7 +6866,7 @@
 					tinymce.activeEditor !== null
 				) tinymce.activeEditor.hidden = true;
 			}
-				
+			
 			
 			/*
 			*	make sure in backend editor
@@ -6852,8 +6909,10 @@
 				$('#kc-container,.kc-params-popup').remove();
 				$('#postdivrich').css({ visibility: 'visible', display: 'block' });
 				$('html,body').stop().animate({ scrollTop : $(window).scrollTop()+3 });
-				$('#kc-switcher-buttons').css({display: 'inline-block'});
-			
+				$('#kc-switcher-buttons,div.gutenberg').show();
+				
+				$('body').removeClass('kc-editor-active');
+				
 				/*
 				*	make sure wp eidtor is in html mode before export all content from builder
 				*/
@@ -6864,7 +6923,14 @@
 				*	Disable warning unchanged
 				*/
 				kc.confirm( false );
-
+				
+				$.post(kc_ajax_url, {
+					'action': 'kc_switch_off',
+					'security': kc_ajax_nonce,
+					'mode': '',
+					'id' : $('#post_ID').val()
+				});
+				
 				return false;
 
 			}else{
@@ -6875,10 +6941,19 @@
 					tinymce.activeEditor !== null
 				) tinymce.activeEditor.hidden = true;
 				
+				$('body').addClass('kc-editor-active');
+				
 				$('#kc-switcher-buttons').hide();
 				kc.cfg.mode = 'kc';
 				kc.model = 1;
 				kc.storage = [];
+				
+				$.post(kc_ajax_url, {
+					'action': 'kc_switch_off',
+					'security': kc_ajax_nonce,
+					'mode': 'kc',
+					'id' : $('#post_ID').val()
+				});
 				
 			}
 

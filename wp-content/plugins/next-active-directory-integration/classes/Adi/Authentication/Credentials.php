@@ -8,7 +8,8 @@ if (class_exists('NextADInt_Adi_Authentication_Credentials')) {
 }
 
 /**
- * NextADInt_Adi_Authentication_Credentials encapsulates login credentials
+ * NextADInt_Adi_Authentication_Credentials encapsulates login credentials.
+ * This class is mutable so parts of the credentials can be updated due to AD/LDAP lookups.
  *
  * @author  Christopher Klein <ckl@neos-it.de>
  * @access public
@@ -33,76 +34,29 @@ class NextADInt_Adi_Authentication_Credentials
 	/** @var string */
 	private $password;
 
+	/** @var NextADInt_Core_Logger */
+	private $logger;
+
 	/**
 	 * NextADInt_Adi_Authentication_Credentials constructor.
 	 *
-	 * @param string $login Login in form 'username' (sAMAccountName) or 'username@domain' (userPrincipalName)
+	 * @param string $login Login in form 'username' (sAMAccountName), 'username@domain' (userPrincipalName) or 'NETBIOS\sAMAccountName'
 	 * @param string $password
 	 *
 	 * @throws Exception
 	 */
 	public function __construct($login = '', $password = '')
 	{
+		$this->logger = NextADInt_Core_Logger::getLogger();
 		$this->setLogin($login);
 		$this->setPassword($password);
 	}
 
 	/**
-	 * Set login credential, extract sAMAccountName, NETBIOS name, userPrincipalName and UPN suffix
-	 *
-	 * @param string $login
-	 *
-	 * @throws Exception if login is empty
+	 * @param $login
 	 */
-	public function setLogin($login)
-	{
-		$login = NextADInt_Core_Util_StringUtil::toLowerCase(trim($login));
+	public function setLogin($login) {
 		$this->login = $login;
-
-		$this->setUserPrincipalName($login);
-		$this->setNetbiosName($login);
-		$this->setSAMAccountName($this->getUpnUsername());
-	}
-
-	/**
-	 * Update the NETBIOS name of the $login name. If available, the NETBIOS name is converted to upper case.
-	 *
-	 * @param $login should contain '\' to separate the NETBIOS name from the sAMAccountName
-	 */
-	public function setNetbiosName($login) {
-		$parts = explode("\\", $login);
-
-		if (sizeof($parts) >= 2) {
-			$this->netbiosName = strtoupper($parts[0]);
-		}
-	}
-
-	/**
-	 * Set the user principal name.
-	 *
-	 * @param $userPrincipalName If this string contains an '@' character the first part is set as userPrincipalName, the second as upnSuffix.
-	 * @throws Exception
-	 */
-	public function setUserPrincipalName($userPrincipalName)
-	{
-		NextADInt_Core_Assert::notEmpty($userPrincipalName, "userPrincipalName must not be empty");
-		$userPrincipalName = NextADInt_Core_Util_StringUtil::toLowerCase(trim($userPrincipalName));
-
-		$parts = explode('@', $userPrincipalName);
-
-		if (sizeof($parts) >= 2) {
-			$this->upnUsername = $parts[0];
-			$this->upnSuffix = $parts[1];
-
-			return;
-		}
-
-		$this->upnUsername = $userPrincipalName;
-		$parts = explode("\\", $userPrincipalName);
-
-		if (sizeof($parts) >= 2) {
-			$this->upnUsername = $parts[1];
-		}
 	}
 
 	/**
@@ -152,6 +106,19 @@ class NextADInt_Adi_Authentication_Credentials
 	}
 
 	/**
+	 * Set the user principal name
+	 * @param $userPrincipalName
+	 */
+	public function setUserPrincipalName($userPrincipalName) {
+		$parts = explode("@", $userPrincipalName);
+
+		if ($parts >= 2) {
+			$this->upnUsername = $parts[0];
+			$this->upnSuffix = $parts[1];
+		}
+	}
+
+	/**
 	 * Update password
 	 *
 	 * @param $password
@@ -171,11 +138,20 @@ class NextADInt_Adi_Authentication_Credentials
 
 
 	/**
+	 * @param string|null
+	 */
+	public function setNetbiosName($netbiosName)
+	{
+		$this->netbiosName = $netbiosName;
+	}
+
+	/**
 	 * @return string|null if NETBIOS name is available it is returned in upper case
 	 */
-    public function getNetbiosName() {
+	public function getNetbiosName()
+	{
 		return $this->netbiosName;
-    }
+	}
 
 	/**
 	 * @return string
@@ -192,13 +168,6 @@ class NextADInt_Adi_Authentication_Credentials
 	public function setSAMAccountName($sAMAccountName)
 	{
 		$this->sAMAccountName = $sAMAccountName;
-
-		// split the sAMAcountName from the logon name
-		$parts = explode('\\', $sAMAccountName);
-
-		if ($parts >= 2) {
-			$this->sAMAccountName = array_pop($parts);
-		}
 	}
 
 	/**
@@ -220,6 +189,6 @@ class NextADInt_Adi_Authentication_Credentials
 	public function __toString()
 	{
 		return "Credentials={login='" . $this->login . "',sAMAccountName='" . $this->sAMAccountName
-		. "',userPrincipalName='" . $this->getUserPrincipalName() . "',netbios='" . $this->netbiosName . "'}";
+			. "',userPrincipalName='" . $this->getUserPrincipalName() . "',netbios='" . $this->netbiosName . "'}";
 	}
 }

@@ -107,6 +107,8 @@ class kc_front{
 				{
 					remove_filter('the_content', 'wpautop');
 					remove_filter('the_content', 'shortcode_unautop');
+					remove_filter('the_content', 'gutenberg_wpautop', 8);
+					remove_filter('the_content', 'do_blocks', 9);
 				}
 			}
 			

@@ -69,23 +69,29 @@ if ( $show_button == 'yes' ) {
 }
 
 $social_list = array(
-	'facebook',
-	'twitter',
-	'google_plus',
-	'linkedin',
-	'pinterest',
-	'flickr',
-	'instagram',
-	'dribbble',
-	'reddit',
-	'email',
+	'facebook' => 'facebook-f',
+	'twitter' => 'twitter',
+	'google_plus' => 'google_plus-g',
+	'linkedin' => 'linkedin-in',
+	'pinterest' => 'pinterest',
+	'flickr' => 'flickr',
+	'instagram' => 'instagram',
+	'dribbble' => 'dribbble',
+	'reddit' => 'reddit-square',
+	'email' => 'envelope',
 	);
 
-foreach( $social_list as $acc ){
+foreach( $social_list as $acc => $icon ){
 
 	if( !empty( $atts[$acc]) && $atts[$acc] != '__empty__' ){
-		$icon = str_replace( array('_', 'email') , array( '-', 'envelope-o') , $acc);
-		$data_socials .= '<a href="' . $atts[$acc] . '" target="_blank"><i class="fa-' . $icon . '"></i></a>';
+
+		$icon = str_replace( array('_', 'email') , array( '-', 'envelope') , $icon);
+
+		if ($icon == 'envelope')
+			$data_socials .= '<a href="' . $atts[$acc] . '" target="_blank"><i class="fa-' . $icon . '"></i></a>';
+		else
+		$data_socials .= '<a href="' . $atts[$acc] . '" target="_blank"><i class="fab-' . $icon . '"></i></a>';
+	
 	}
 
 }

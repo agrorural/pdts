@@ -3,7 +3,7 @@
 Plugin Name: KingComposer
 Plugin URI: https://kingcomposer.com/
 Description: KingComposer is the most professional WordPress page builder plugin, it's lightweight and high efficiency to help you build any layout design quickly.
-Version: 2.6.17
+Version: 2.7.6
 Author: King-Theme
 Author URI: http://king-theme.com/
 Text Domain: kingcomposer
@@ -71,7 +71,7 @@ class KingComposer{
 	/*
 	*	kcp access uri
 	*/
-	private $kcp_uri = 'https://kingcomposer.com/?kc_store_action=';
+	private $kcp_uri = '';
 	/**
 	*	support content types
 	*/
@@ -211,7 +211,9 @@ class KingComposer{
 		*/
 		add_filter('kc_register_styles', array( &$this, 'register_map_styles' ));
 		add_filter('kc_register_scripts', array( &$this, 'register_map_scripts' ));
-
+		
+		$this->kcp_uri = (is_ssl() ? 'https' : 'http').'://kingcomposer.com/?kc_store_action=';
+		
 	}
 
 	public static function globe(){
@@ -236,9 +238,7 @@ class KingComposer{
 		/*
 		*	This init action has highest priority
 		*/
-		if (defined('KC_EXTENSION_BETA') && KC_EXTENSION_BETA === true) {
-			require_once KC_PATH.'/includes/kc.extensions.php';
-		}
+		require_once KC_PATH.'/includes/kc.extensions.php';
 	}
 
 	public function init(){
@@ -267,6 +267,7 @@ class KingComposer{
 				'counter_box',
 				'carousel_images',
 				'twitter_feed',
+				'feature_box',
 				'pie_chart',
 				'carousel_post',
 				'image_gallery',
@@ -1282,13 +1283,13 @@ class KingComposer{
 		/*
 		*	create a request to kcp
 		*/
-
+		
 		$request = @wp_remote_get($url);
 		$response = @wp_remote_retrieve_body( $request );
 		if (is_wp_error($request) || empty($response)) {
 			$response = @file_get_contents($url);
 		}
-
+		
 		$response = json_decode( $response, true );
 
 		$data = array('pack'=>'trial', 'key'=>'', 'theme'=>$theme, 'domain'=>$domain, 'date'=>$date, 'key'=>$code, 'stt'=>0);

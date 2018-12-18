@@ -2,8 +2,8 @@
 Contributors: neosit,tobi823,fatsquirrel,schakko,medan123
 Tags: authentication, active directory, ldap, authorization, security, windows
 Requires at least: 4.0
-Tested up to: 4.7.2
-Stable tag: 2.1.0
+Tested up to: 4.9.8
+Stable tag: 2.1.4
 License: GPLv3
 
 Next Active Directory Integration allows WordPress to authenticate, authorize, create and update users against Microsoft Active Directory.
@@ -78,7 +78,7 @@ Please read the [FAQ](https://www.active-directory-wp.com/docs/FAQ.html) of our 
 == Installation ==
 
 = Requirements =
-To install Next Active Directory Integration you need at least WordPress 4.0 and PHP 5.3
+To install Next Active Directory Integration you need at least WordPress 4.0 and PHP 5.6
 
 Although only tested with Apache 2.2 and 2.4 *NADI* should work with all other common web servers like nginx and IIS.
 
@@ -88,6 +88,15 @@ Next Active Directory Integration requires a few PHP modules to be enabled. Plea
 	extension=php_ldap.dll
 	extension=php_mbstring.dll
 	extension=php_openssl.dll
+
+= Important =
+
+As of *31.12.2018* NADI will *no* longer support PHP version *< 7.1*. The reason is that security support for PHP 5.6 and PHP 7.0 will be dropped by the maintainers as you can see in the official PHP documentation http://php.net/supported-versions.php as of December 2018. For security reasons and in order to use NADI in 2019 we hereby politely encourage you to migrate your environments to at least PHP 7.1 until then.
+
+Thank you all for your support and understanding.
+
+Best regards,
+NeosIT GmbH
 
 = Migration from ADI 1.x to NADI =
 Please read [our migration guide](https://www.active-directory-wp.com/docs/Migration/index.html) carefully!
@@ -116,6 +125,41 @@ It is __not__ possible to activate *NADI* for a site inside a network.
 == Changelog ==
 
 For detailed information you can visit the official [GitHub repository of Active Directory Integration 2](https://github.com/NeosIT/active-directory-integration2)
+
+= 2.1.4 =
+* FIXED: isUserAuthorized() prevented login for users successfully authenticated via SSO at Active Directory due username was passed instead of guid
+* FIXED: HelperTabs not opening anymore due bootstrap css .hidden class overwrites WordPress css .hidden class
+* FIXED: verify connection input and button share the same element ID causing a DOM error in the browser console log
+* ADDED: SSO Username variable helper tab content now contains a table including all supported variables and their current $_SERVER values
+
+= 2.1.3 =
+* ADD: added message on the profile configuration page to inform customers about end of PHP version <7.1 support
+* ADD: json response for "Sync to WordPress" triggered via powershell
+* ADD: improved logging in within the Connection.php class
+* ADD: missing German translations
+* ADD: PHP_AUTH_USER to SSO username variables
+* FIXED: app.config and password.controller.config being flagged by customer firewalls / security plugins which resulted in them not being loaded properly (renamed them)
+* FIXED: redirect to target site not working properly after being authenticated via NADI SSO
+* FIXED: isUserAuthorized() not working properly with UPNs
+* FIXED: "Set local Password" not working if "Automatic user update" was enabled at the same time
+* FIXED: "Overwrite with empty value" not working anymore
+
+= 2.1.2 =
+* FIXED: NTLM authentication not working if samAccountName of a user does not match the part of the UPN in front of the suffix
+* REMOVED: NADI support license nag message on WordPress plug-in page
+
+= 2.1.1 =
+* ADD: Github#59 proxy address login (Special thanks to Github user *nedwidek* for contributing this functionality)
+* ADD: profile picture ad attributes to the ad attributes dropdown at the ad attributes configuration page
+* ADD: Github#44 claims based authentication (Special thanks to Github user *rgottsch* for contributing this functionality)
+* ADD: new option to decide if you want to grant smart card users access to the WordPress environment
+* ADD: links to the specific documentation pages for each configuration page
+* ADD: Github#64 powershell script to trigger "Sync to WordPress" and "Sync to AD" (Special thanks to Github user *nemchik* for contributing this)
+* FIX: Github#49 its now possible to enter an empty base dn
+* FIX: adjusted base DN description
+* FIX: Github#59 typo in LoginService.php
+* REMOVED: whitespaces inside the rendered curl and wget tags
+* REMOVED: old code that caused an warning with PHP 7.2.0 changes to count() and sizeOf()
 
 = 2.1.0 =
 * ADD: NADI is now using Monolog for everything related to logs

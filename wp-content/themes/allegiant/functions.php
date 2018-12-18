@@ -3,7 +3,7 @@
 }
 define( 'CPOTHEME_ID', 'allegiant' );
 define( 'CPOTHEME_NAME', 'Allegiant' );
-define( 'CPOTHEME_VERSION', '1.1.7' );
+define( 'CPOTHEME_VERSION', '1.2.0' );
 //Other constants
 define( 'CPOTHEME_LOGO_WIDTH', '215' );
 define( 'CPOTHEME_USE_SLIDES', true );
@@ -30,3 +30,7 @@ require_once $core_path . 'init.php';
 $include_path = get_template_directory() . '/includes/';
 //Main components
 require_once( $include_path . 'setup.php' );
+
+if ( ! defined( 'SHORTPIXEL_AFFILIATE_CODE' ) ) {
+	define( 'SHORTPIXEL_AFFILIATE_CODE', '3AXNUKA28044' );
+}

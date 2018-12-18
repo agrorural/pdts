@@ -39,7 +39,7 @@ class NextADInt_Ldap_Connection
 			// get adLdap
 			require_once NEXT_AD_INT_PATH . '/vendor/adLDAP/adLDAP.php';
 		}
-
+		
 		$this->configuration = $configuration;
 
 		$this->logger = NextADInt_Core_Logger::getLogger();
@@ -263,6 +263,18 @@ class NextADInt_Ldap_Connection
 	public function isConnected()
 	{
 		return is_object($this->adldap);
+	}
+	
+	/**
+	 *  Find the sAMAccountName associated with a ProxyAddress
+	 *  
+	 *  @param string $proxyAddress The proxy address to check
+	 *  
+	 *  @return false if not found or the sAMAccountName.
+	 */
+	public function findByProxyAddress($proxyAddress)
+	{
+		return $this->adldap->findByProxyAddress($proxyAddress);
 	}
 
 	/**
@@ -607,6 +619,7 @@ class NextADInt_Ldap_Connection
 
 			if ($groupMembers === false) {
 				// false means that the security group could not be retrieved
+				$this->logger->error('Could not find Active Directory Security Group with name: ' . $group);
 				continue;
 			}
 

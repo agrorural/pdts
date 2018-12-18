@@ -93,7 +93,7 @@ ob_start();
 			<div id="kc-mapper-fields-btn">
 				<button class="save-fields color mbtn"><i class="fa-check"></i> <?php _e('Save', 'kingcomposer'); ?></button>
 				<button class="kc-mapper-settings-close mbtn"><i class="fa-times"></i> <?php _e('Cancel', 'kingcomposer'); ?></button>
-				<button class="kc-mapper-settings-delete mbtn delete"><i class="fa-trash-o"></i> <?php _e('Delete', 'kingcomposer'); ?></button>
+				<button class="kc-mapper-settings-delete mbtn delete"><i class="fa-trash"></i> <?php _e('Delete', 'kingcomposer'); ?></button>
 				<p>
 					<?php _e('Need help how to display output of shortcode?', 'kingcomposer'); ?>
 					<a href="http://docs.kingcomposer.com" target=_blank><?php _e('Check docs', 'kingcomposer'); ?></a>
