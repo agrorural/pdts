@@ -242,8 +242,11 @@ add_filter ('admin_body_class', 'kc_admin_body_classes');
 
 function kc_admin_body_classes ($classes) {
 
-	global $kc;
-
+	global $kc, $wp_version;
+	
+	if (version_compare($wp_version, '5.0') >= 0)
+		$classes .= ' WP5';
+	
 	if ($kc->action == 'live-editor')
 		return "$classes kc-live-editor kc-request-iframe";
 
@@ -320,8 +323,17 @@ add_action ('edit_form_after_title', 'kc_after_title');
 add_action ('edit_form_after_editor', 'kc_after_editor');
 add_action ('admin_footer', 'kc_admin_footer');
 
+// WP 5.0
+global $wp_version;
+if (version_compare($wp_version, '5.0') >= 0)
+	add_action ('all_admin_notices', 'kc_block_editor');
 
-
+function kc_block_editor() {
+	global $post;
+	if (function_exists('use_block_editor_for_post') && use_block_editor_for_post($post)) {
+		kc_block_editor_compatible($post);
+	}
+}
 /*
 *	Header init
 */
@@ -454,10 +466,10 @@ END;
 	}
 
 ?>
-	<div id="kc-switcher-buttons" style="display: inline-block;">
+	<div id="kc-switcher-buttons">
 
 		<?php do_action('kc-switcher-buttons'); ?>
-
+		
 		<a href="#" class="kc-button blue alignright" id="kc-switch-builder">
 			<img src="<?php echo KC_URL; ?>/assets/images/icon.png" width="20">
 			<?php _e('Edit with KingComposer', 'kingcomposer'); ?>
@@ -500,7 +512,7 @@ function kc_after_editor () {
 			}
 		}
 	}
-
+	
 	if ($kc->action == 'live-editor' || (defined('KC_FORCE_DEFAULT') && KC_FORCE_DEFAULT === true)) {
 		$data['mode'] = 'kc';
 	}
@@ -621,10 +633,14 @@ function kc_process_save ($post_id, $post) {
 
 		$data = array(
 			'ID' => $id,
-			'post_title'   => stripslashes( $_POST['post_title'] ),
 			'post_content' => $content_processed,
 			'post_content_filtered' => $content
 		);
+		
+		if (isset($_POST['post_title']) && !empty($_POST['post_title'])) {
+			$data[ 'post_title' ] = stripslashes( $_POST['post_title'] );
+		}
+		
 		/*
 		if (current_user_can('publish_pages'))
 			$data['post_status']  = 'publish';
@@ -757,7 +773,7 @@ function kc_pro_settings_tab() {
 add_action( 'kc-top-nav', 'kc_ask2try_btn' );
 add_action( 'kc-switcher-buttons', 'kc_ask2try_btn' );
 function kc_ask2try_btn(){
-	echo '<a class="kc-try-link" href="'.admin_url('/admin.php?page=kingcomposer#kc_pro').'">Try Front-End live editor?</a>';
+	echo '<a class="kc-try-link" href="'.admin_url('/admin.php?page=kingcomposer#kc_pro').'">&star; Live edit with KC Pro!</a>';
 }
 
 function kc_force_default_editor() {
@@ -985,18 +1001,50 @@ function kc_gutenberg_compatible( $return, $post ) {
 	}
 	
 	if (defined('GUTENBERG_VERSION') && !isset($_GET['classic-editor'])) {
-		do_action('edit_form_after_title');
-		do_action('edit_form_after_editor');
-		kc_action_the_post($post);
-		?>
-		<form id="post" style="display: none;">
-			<input type="hidden" id="title" value="<?php echo $post->post_title; ?>" />
-			<input type="hidden" id="post_ID" value="<?php echo $post->ID; ?>" />
-			<?php wp_editor( $post->post_content, 'content' ); ?>
-		</form>
-		<?php
+		kc_block_editor_compatible($post);
 		return true;
 	}
 		
 	return false;
 }
+
+function kc_block_editor_compatible($post) {
+
+	do_action('edit_form_after_title');
+	do_action('edit_form_after_editor');
+	kc_action_the_post($post);
+	?>
+	<form id="post" style="display: none;">
+		<input type="hidden" id="title" value="<?php echo $post->post_title; ?>" />
+		<input type="hidden" id="post_ID" value="<?php echo $post->ID; ?>" />
+		<?php wp_editor( $post->post_content, 'content' ); ?>
+	</form>
+<?php
+}
+
+
+function kc_meta_box_callback() {
+?>	<style type="text/css">#kc-hidden-metabox {display: none;}</style>
+	<input type="hidden" name="kc-metabox" />
+<?php
+}
+function kc_meta_box() {
+	
+	global $post, $wp_version;
+	
+	if (
+		version_compare($wp_version, '5.0') >= 0 && 
+		function_exists('use_block_editor_for_post') && 
+		use_block_editor_for_post($post)
+	) {
+	    add_meta_box(
+	        'kc-hidden-metabox',
+	        'KC Metabox',
+	        'kc_meta_box_callback',
+	        'page'
+	    );
+    }
+}
+
+add_action( 'add_meta_boxes', 'kc_meta_box' );
+

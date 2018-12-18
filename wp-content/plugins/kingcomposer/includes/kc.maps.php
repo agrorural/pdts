@@ -29,6 +29,11 @@ $kc->add_map(
 			'system_only' => true, /* Use for system only and dont show up to Add Elements */
 			'params' => array()
 		),
+		
+		'kc_raw_cos' => array(
+			'system_only' => true, /* Use for system only and dont show up to Add Elements */
+			'params' => array()
+		),
 
 		'_styling' => array(
 			'system_only' => true,

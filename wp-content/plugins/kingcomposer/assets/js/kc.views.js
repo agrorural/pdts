@@ -28,7 +28,13 @@
 				} else if ($('div.gutenberg').length > 0) {
 					$('div.gutenberg').hide().removeClass('first-load').after( el );
 					el.show();
-				};
+				} else if (wp.blocks !== undefined && $('#editor').length > -1) {
+					$('#kc-controls').remove();
+					$('#editor .editor-block-list__layout').after( el );
+					setTimeout(function() {
+						$('.edit-post-header').prepend($('#kc-controls'));
+					}, 100);
+				}
 				
 				this.el = el;
 				
@@ -163,7 +169,7 @@
 			
 			collapse : function(e){
 				
-				var ctn = $(this).closest('#kc-container');
+				var ctn = $('#kc-container');
 				if (!ctn.hasClass('collapse'))
 				{
 					ctn.addClass('collapse');

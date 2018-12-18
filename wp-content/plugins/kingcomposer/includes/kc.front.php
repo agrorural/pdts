@@ -105,10 +105,21 @@ class kc_front{
 				
 				if (!empty($post_data) && $post_data['mode'] == 'kc')
 				{
-					remove_filter('the_content', 'wpautop');
-					remove_filter('the_content', 'shortcode_unautop');
-					remove_filter('the_content', 'gutenberg_wpautop', 8);
-					remove_filter('the_content', 'do_blocks', 9);
+					$priority = has_filter( 'the_content', 'wpautop' );
+					remove_filter('the_content', 'wpautop', $priority);
+					$priority = has_filter( 'the_content', 'shortcode_unautop' );
+					remove_filter('the_content', 'shortcode_unautop', $priority);
+					$priority = has_filter( 'the_content', 'gutenberg_wpautop' );
+					remove_filter('the_content', 'gutenberg_wpautop', $priority);
+					$priority = has_filter( 'the_content', 'do_blocks' );
+					remove_filter('the_content', 'do_blocks', $priority);
+					
+					$priority = has_filter( 'the_content', '_restore_wpautop_hook' );
+					remove_filter( 'the_content', '_restore_wpautop_hook', $priority );
+					$priority = has_filter( 'the_content', 'strip_dynamic_blocks' );
+					remove_filter( 'the_content', 'strip_dynamic_blocks', $priority );
+					
+					
 				}
 			}
 			
@@ -116,12 +127,35 @@ class kc_front{
 			$this->css_obj = array();
 			$this->prevent_infinite_loop = array();
 			
-			$post->post_content = apply_filters(
-				'kc-content-after',
-				$this->do_filter_shortcode( apply_filters( 'kc-content-before', $post->post_content ), true )
-			);
+			$post->post_content = '<div class="kc_clfw"></div>' . 
+				$this->do_filter_shortcode( 
+					apply_filters( 'kc-content-before', $post->post_content ), 
+					true 
+				);
 			
-			$post->post_content = '<div class="kc_clfw"></div>' . $post->post_content;
+			$live_footer = apply_filters('kc-content-after', '');
+			
+			global $wp_version;
+			
+			if (
+				version_compare($wp_version, '5.0') >= 0 &&
+				$live_footer !== '' && 
+				strpos($live_footer, "data-content='") !== false &&
+				isset($post_data) && 
+				!empty($post_data) && 
+				$post_data['mode'] == 'kc'
+			) {
+				$live_footer = explode("data-content='", $live_footer);
+				for ($i=1; $i<count($live_footer); $i++) {
+					$sc = substr($live_footer[$i], 0, strpos($live_footer[$i], "'"));
+					$ex = substr($live_footer[$i], strpos($live_footer[$i], "'"));
+					$live_footer[$i] = '[kc_raw_cos code="'.base64_encode(urlencode($sc)).'"]'.$ex;
+				}
+				$live_footer = implode("data-content='", $live_footer);
+			}
+			
+			$post->post_content .= $live_footer;
+			
 			$post->kc_processed = true;
 			$this->css_str_master = $this->css_str;
 			$this->css_obj_master = $this->css_obj;
